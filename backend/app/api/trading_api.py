@@ -10,11 +10,13 @@ from backend.app.schemas.trading import (
     PaperOrderRequest,
     PaperOrderResponse,
     PortfolioResponse,
+    RiskStatusResponse,
     SignalsResponse,
     SignalBar,
     SymbolsResponse,
 )
 from backend.app.services import data_service, live_quote_service, paper_trade_service
+from backend.app.services.paper_trade_service import RiskViolationError
 
 router = APIRouter(prefix="/api", tags=["Trading"])
 
@@ -91,6 +93,34 @@ def paper_trade_order(request: PaperOrderRequest) -> PaperOrderResponse:
         return PaperOrderResponse(
             message=f"Paper {request.side.lower()} order executed",
             order=order,
+        )
+    except RiskViolationError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": exc.error, "message": exc.message},
+        ) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/risk/status", response_model=RiskStatusResponse)
+def get_risk_status() -> RiskStatusResponse:
+    try:
+        metrics = paper_trade_service.get_risk_metrics()
+        return RiskStatusResponse(
+            total_exposure_pct=metrics["total_exposure_pct"],
+            open_positions_count=metrics["open_positions_count"],
+            today_pnl_pct=metrics["today_pnl_pct"],
+            risk_status=metrics["risk_status"],
+            today_realized_pnl=metrics["today_realized_pnl"],
+            largest_position_pct=metrics["largest_position_pct"],
+            max_position_pct_limit=metrics["max_position_pct_limit"],
+            max_open_positions_limit=metrics["max_open_positions_limit"],
+            daily_loss_limit_pct=metrics["daily_loss_limit_pct"],
+            total_portfolio_value=metrics["total_portfolio_value"],
+            initial_capital=metrics["initial_capital"],
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

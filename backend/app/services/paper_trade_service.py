@@ -4,11 +4,24 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from backend.app.core.paths import PAPER_TRADES_FILE
 from backend.app.services.data_service import get_latest_close
+from backend.app.services.risk_service import (
+    RiskViolationError,
+    get_risk_metrics,
+    validate_buy_order,
+)
+
+# Re-export for API consumers
+__all__ = [
+    "RiskViolationError",
+    "place_order",
+    "get_portfolio",
+    "get_risk_metrics",
+    "get_recent_trades",
+]
 
 DEFAULT_CAPITAL = 100_000.0
 
@@ -56,11 +69,8 @@ def place_order(
     cash = float(state["cash"])
 
     if side == "buy":
+        validate_buy_order(state, symbol, quantity, price)
         cost = price * quantity
-        if cost > cash:
-            raise ValueError(
-                f"Insufficient cash. Need ₹{cost:,.2f}, available ₹{cash:,.2f}"
-            )
         cash -= cost
         pos = positions.get(symbol, {"quantity": 0, "avg_price": 0.0, "strategy": strategy})
         old_qty = int(pos["quantity"])
@@ -72,11 +82,14 @@ def place_order(
             "avg_price": round(new_avg, 2),
             "strategy": strategy,
         }
+        realized_pnl = None
     else:
         pos = positions.get(symbol)
         if not pos or int(pos["quantity"]) < quantity:
             held = int(pos["quantity"]) if pos else 0
             raise ValueError(f"Insufficient shares. Held {held}, tried to sell {quantity}")
+        avg_price = float(pos["avg_price"])
+        realized_pnl = round((price - avg_price) * quantity, 2)
         cash += price * quantity
         new_qty = int(pos["quantity"]) - quantity
         if new_qty == 0:
@@ -84,7 +97,7 @@ def place_order(
         else:
             positions[symbol] = {
                 "quantity": new_qty,
-                "avg_price": float(pos["avg_price"]),
+                "avg_price": avg_price,
                 "strategy": pos.get("strategy", strategy),
             }
 
@@ -97,6 +110,7 @@ def place_order(
         "price": round(price, 2),
         "strategy": strategy,
         "total_value": round(price * quantity, 2),
+        "realized_pnl": realized_pnl,
     }
     state["cash"] = round(cash, 2)
     state["positions"] = positions
@@ -136,6 +150,7 @@ def get_portfolio() -> dict[str, Any]:
     total_value = cash + positions_value
     total_pnl = total_value - initial
     total_pnl_pct = (total_pnl / initial * 100) if initial else 0.0
+    risk = get_risk_metrics(state)
 
     return {
         "initial_capital": round(initial, 2),
@@ -148,6 +163,7 @@ def get_portfolio() -> dict[str, Any]:
         "positions": positions_out,
         "order_count": len(state["orders"]),
         "recent_trades": get_recent_trades(state=state, limit=5),
+        "risk_status": risk["risk_status"],
     }
 
 
@@ -165,7 +181,7 @@ def get_recent_trades(
         if order["side"] == "buy":
             pnl = (current_price - entry_price) * quantity
         else:
-            pnl = (entry_price - current_price) * quantity
+            pnl = float(order.get("realized_pnl", (entry_price - current_price) * quantity))
         trades.append(
             {
                 "id": order["id"],

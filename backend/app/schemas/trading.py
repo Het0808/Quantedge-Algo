@@ -135,3 +135,22 @@ class LiveQuote(BaseModel):
 class LiveQuotesResponse(BaseModel):
     quotes: list[LiveQuote]
     latest_signal: Optional[dict[str, Any]] = None
+
+
+class RiskErrorResponse(BaseModel):
+    error: str
+    message: str
+
+
+class RiskStatusResponse(BaseModel):
+    total_exposure_pct: float
+    open_positions_count: int
+    today_pnl_pct: float
+    risk_status: str
+    today_realized_pnl: float = 0.0
+    largest_position_pct: float = 0.0
+    max_position_pct_limit: float = 20.0
+    max_open_positions_limit: int = 5
+    daily_loss_limit_pct: float = -5.0
+    total_portfolio_value: float = 0.0
+    initial_capital: float = 0.0
