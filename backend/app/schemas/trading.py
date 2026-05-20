@@ -100,6 +100,18 @@ class PositionInfo(BaseModel):
     strategy: Optional[str] = None
 
 
+class RecentTrade(BaseModel):
+    id: int
+    timestamp: str
+    symbol: str
+    side: str
+    quantity: int
+    entry_price: float
+    current_price: float
+    pnl: float
+    strategy: Optional[str] = None
+
+
 class PortfolioResponse(BaseModel):
     initial_capital: float
     cash: float
@@ -110,6 +122,7 @@ class PortfolioResponse(BaseModel):
     unrealized_pnl: float
     positions: list[PositionInfo]
     order_count: int
+    recent_trades: list[RecentTrade] = []
 
 
 class LiveQuote(BaseModel):

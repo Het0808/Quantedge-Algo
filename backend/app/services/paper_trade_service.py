@@ -147,4 +147,36 @@ def get_portfolio() -> dict[str, Any]:
         "unrealized_pnl": round(unrealized_pnl, 2),
         "positions": positions_out,
         "order_count": len(state["orders"]),
+        "recent_trades": get_recent_trades(state=state, limit=5),
     }
+
+
+def get_recent_trades(
+    state: dict[str, Any] | None = None, limit: int = 5
+) -> list[dict[str, Any]]:
+    if state is None:
+        state = _load_state()
+    orders = list(reversed(state["orders"][-limit:]))
+    trades: list[dict[str, Any]] = []
+    for order in orders:
+        current_price = get_latest_close(order["symbol"])
+        entry_price = float(order["price"])
+        quantity = int(order["quantity"])
+        if order["side"] == "buy":
+            pnl = (current_price - entry_price) * quantity
+        else:
+            pnl = (entry_price - current_price) * quantity
+        trades.append(
+            {
+                "id": order["id"],
+                "timestamp": order["timestamp"],
+                "symbol": order["symbol"],
+                "side": order["side"].upper(),
+                "quantity": quantity,
+                "entry_price": round(entry_price, 2),
+                "current_price": round(current_price, 2),
+                "pnl": round(pnl, 2),
+                "strategy": order.get("strategy"),
+            }
+        )
+    return trades
