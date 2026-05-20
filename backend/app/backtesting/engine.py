@@ -203,4 +203,25 @@ class Backtester:
             "win_rate": round(win_rate, 2),
             "total_trades": self._total_executions,
             "equity_curve": self.equity_curve,
+            "dates": self._dates,
+            "trades_table": self._trades_table(),
         }
+
+    def _trades_table(self) -> pd.DataFrame:
+        rows: list[dict[str, Any]] = []
+        for trade in self._closed_trades:
+            bar = int(trade["bar"])
+            trade_date = self._dates[bar] if bar < len(self._dates) else None
+            row: dict[str, Any] = {
+                "date": trade_date,
+                "type": trade["type"].upper(),
+                "price": round(trade["price"], 2),
+                "shares": int(trade["shares"]),
+                "fee": round(trade["fee"], 2),
+            }
+            if trade["type"] == "sell":
+                row["pnl"] = round(trade.get("pnl", 0.0), 2)
+            else:
+                row["pnl"] = None
+            rows.append(row)
+        return pd.DataFrame(rows)
