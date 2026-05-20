@@ -1,0 +1,48 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables - NEVER commit this
+.env
+
+# Data files (too large for Git)
+data/raw/*.csv
+data/processed/*.csv
+*.pkl
+*.h5
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Models (too large for Git)
+ml/models/*.pkl
+ml/models/*.h5
+ml/models/*.pt
+
+# Coverage
+.coverage
+htmlcov/

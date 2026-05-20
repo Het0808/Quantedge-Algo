@@ -1,0 +1,52 @@
+﻿version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: quantedge_postgres
+    environment:
+      POSTGRES_DB: quantedge
+      POSTGRES_USER: quantedge_user
+      POSTGRES_PASSWORD: your_postgres_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quantedge_user -d quantedge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: quantedge_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  influxdb:
+    image: influxdb:2.7-alpine
+    container_name: quantedge_influxdb
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: adminpassword123
+      DOCKER_INFLUXDB_INIT_ORG: quantedge
+      DOCKER_INFLUXDB_INIT_BUCKET: market_data
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: your_influxdb_token
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+
+volumes:
+  postgres_data:
+  redis_data:
+  influxdb_data:
