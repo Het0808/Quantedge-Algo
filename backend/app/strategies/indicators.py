@@ -3,32 +3,28 @@
 import pandas as pd
 
 
-def _require_ohlcv(df: pd.DataFrame) -> None:
-    required = {"open", "high", "low", "close", "volume"}
-    missing = required - set(df.columns)
-    if missing:
-        raise ValueError(f"DataFrame missing required columns: {sorted(missing)}")
-
-
-def ema(df: pd.DataFrame, period: int) -> pd.DataFrame:
-    """Add exponential moving average of close as ema_{period}."""
-    _require_ohlcv(df)
-    result = df.copy()
-    result[f"ema_{period}"] = result["close"].ewm(span=period, adjust=False).mean()
-    return result
-
-
 def rsi(df: pd.DataFrame, period: int = 14) -> pd.DataFrame:
-    """Add Relative Strength Index as rsi_{period}."""
-    _require_ohlcv(df)
+    """
+    Relative Strength Index using Wilder's smoothing.
+
+    Adds column 'rsi' and returns the DataFrame.
+    """
     result = df.copy()
     delta = result["close"].diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
+
     avg_gain = gain.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
     avg_loss = loss.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
     rs = avg_gain / avg_loss
-    result[f"rsi_{period}"] = 100 - (100 / (1 + rs))
+    result["rsi"] = 100 - (100 / (1 + rs))
+    return result
+
+
+def ema(df: pd.DataFrame, period: int, column: str = "close") -> pd.DataFrame:
+    """Exponential moving average; adds column ema_{period}."""
+    result = df.copy()
+    result[f"ema_{period}"] = result[column].ewm(span=period, adjust=False).mean()
     return result
 
 
@@ -38,8 +34,7 @@ def macd(
     slow: int = 26,
     signal: int = 9,
 ) -> pd.DataFrame:
-    """Add MACD line, signal line, and histogram columns."""
-    _require_ohlcv(df)
+    """MACD line, signal line, and histogram."""
     result = df.copy()
     ema_fast = result["close"].ewm(span=fast, adjust=False).mean()
     ema_slow = result["close"].ewm(span=slow, adjust=False).mean()
@@ -54,8 +49,7 @@ def bollinger_bands(
     period: int = 20,
     num_std: float = 2.0,
 ) -> pd.DataFrame:
-    """Add Bollinger upper, middle, and lower band columns."""
-    _require_ohlcv(df)
+    """Bollinger upper, middle, and lower bands."""
     result = df.copy()
     middle = result["close"].rolling(window=period).mean()
     std = result["close"].rolling(window=period).std()
@@ -66,8 +60,7 @@ def bollinger_bands(
 
 
 def atr(df: pd.DataFrame, period: int = 14) -> pd.DataFrame:
-    """Add Average True Range as atr_{period}."""
-    _require_ohlcv(df)
+    """Average True Range as atr_{period}."""
     result = df.copy()
     prev_close = result["close"].shift(1)
     tr = pd.concat(
@@ -83,8 +76,7 @@ def atr(df: pd.DataFrame, period: int = 14) -> pd.DataFrame:
 
 
 def vwap(df: pd.DataFrame) -> pd.DataFrame:
-    """Add cumulative volume-weighted average price as vwap."""
-    _require_ohlcv(df)
+    """Cumulative volume-weighted average price."""
     result = df.copy()
     typical_price = (result["high"] + result["low"] + result["close"]) / 3
     cumulative_tp_vol = (typical_price * result["volume"]).cumsum()

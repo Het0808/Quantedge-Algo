@@ -94,7 +94,7 @@ def run_backtest(
     results = backtester.results()
 
     equity_curve = []
-    dates = results.get("dates") or df_signals["date"].tolist()
+    dates = backtester.dates or df_signals["date"].tolist()
     for dt, value in zip(dates, results["equity_curve"]):
         equity_curve.append(
             {
@@ -103,35 +103,51 @@ def run_backtest(
             }
         )
 
-    trades_table = results.get("trades_table", pd.DataFrame())
+    trades_table = backtester.trades_table
     trades: list[dict[str, Any]] = []
     if not trades_table.empty:
         for _, row in trades_table.iterrows():
-            trade = {
-                "date": pd.Timestamp(row["date"]).strftime("%Y-%m-%d")
-                if pd.notna(row["date"])
-                else None,
-                "type": row["type"],
-                "price": row["price"],
-                "shares": int(row["shares"]),
-                "fee": row["fee"],
-                "pnl": row["pnl"] if pd.notna(row.get("pnl")) else None,
-            }
+            if "exit_date" in row:
+                trade = {
+                    "date": pd.Timestamp(row["exit_date"]).strftime("%Y-%m-%d")
+                    if pd.notna(row["exit_date"])
+                    else None,
+                    "type": "SELL",
+                    "entry_price": row["entry_price"],
+                    "exit_price": row["exit_price"],
+                    "shares": int(row["shares"]),
+                    "pnl": row["pnl"] if pd.notna(row.get("pnl")) else None,
+                    "pnl_pct": row.get("pnl_pct"),
+                    "exit_reason": row.get("exit_reason"),
+                }
+            else:
+                trade = {
+                    "date": pd.Timestamp(row["date"]).strftime("%Y-%m-%d")
+                    if pd.notna(row.get("date"))
+                    else None,
+                    "type": row.get("type", "TRADE"),
+                    "price": row.get("price"),
+                    "shares": int(row["shares"]),
+                    "fee": row.get("fee"),
+                    "pnl": row["pnl"] if pd.notna(row.get("pnl")) else None,
+                }
             trades.append(trade)
 
+    final_value = results["equity_curve"][-1] if results["equity_curve"] else capital
     return {
-        "symbol": results["symbol"],
+        "symbol": symbol.upper(),
         "strategy": strategy.lower(),
         "start_date": start_date,
         "end_date": end_date,
-        "initial_capital": results["initial_capital"],
-        "final_portfolio_value": results["final_portfolio_value"],
+        "initial_capital": capital,
+        "final_portfolio_value": round(final_value, 2),
         "total_return_pct": results["total_return_pct"],
         "cagr": results["cagr"],
         "sharpe_ratio": results["sharpe_ratio"],
         "max_drawdown_pct": results["max_drawdown_pct"],
         "win_rate": results["win_rate"],
         "total_trades": results["total_trades"],
+        "benchmark_return_pct": results.get("benchmark_return_pct", 0.0),
         "equity_curve": equity_curve,
         "trades": trades,
     }
