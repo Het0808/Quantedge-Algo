@@ -46,3 +46,6 @@ ml/models/*.pt
 # Coverage
 .coverage
 htmlcov/
+
+# Paper trading runtime state
+paper_trades.json
