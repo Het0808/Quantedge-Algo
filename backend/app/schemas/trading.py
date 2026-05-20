@@ -110,3 +110,15 @@ class PortfolioResponse(BaseModel):
     unrealized_pnl: float
     positions: list[PositionInfo]
     order_count: int
+
+
+class LiveQuote(BaseModel):
+    symbol: str
+    price: float
+    volume: int
+    timestamp: str
+
+
+class LiveQuotesResponse(BaseModel):
+    quotes: list[LiveQuote]
+    latest_signal: Optional[dict[str, Any]] = None

@@ -4,6 +4,8 @@ from backend.app.schemas.trading import (
     BacktestRequest,
     BacktestResponse,
     HistoricalResponse,
+    LiveQuote,
+    LiveQuotesResponse,
     OHLCVBar,
     PaperOrderRequest,
     PaperOrderResponse,
@@ -12,7 +14,7 @@ from backend.app.schemas.trading import (
     SignalBar,
     SymbolsResponse,
 )
-from backend.app.services import data_service, paper_trade_service
+from backend.app.services import data_service, live_quote_service, paper_trade_service
 
 router = APIRouter(prefix="/api", tags=["Trading"])
 
@@ -94,6 +96,19 @@ def paper_trade_order(request: PaperOrderRequest) -> PaperOrderResponse:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/live/quotes", response_model=LiveQuotesResponse)
+def get_live_quotes() -> LiveQuotesResponse:
+    try:
+        raw_quotes = live_quote_service.get_live_quotes()
+        quotes = [LiveQuote(**q) for q in raw_quotes]
+        return LiveQuotesResponse(
+            quotes=quotes,
+            latest_signal=live_quote_service.get_latest_signal(),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Redis unavailable: {exc}") from exc
 
 
 @router.get("/paper-trade/portfolio", response_model=PortfolioResponse)
