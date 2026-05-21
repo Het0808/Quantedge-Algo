@@ -94,14 +94,16 @@ def run_backtest(
     results = backtester.results()
 
     equity_curve = []
-    dates = backtester.dates or df_signals["date"].tolist()
-    for dt, value in zip(dates, results["equity_curve"]):
-        equity_curve.append(
-            {
-                "date": pd.Timestamp(dt).strftime("%Y-%m-%d"),
-                "value": round(float(value), 2),
-            }
-        )
+    for point in results["equity_curve"]:
+        if isinstance(point, dict):
+            equity_curve.append(
+                {
+                    "date": pd.Timestamp(point["date"]).strftime("%Y-%m-%d"),
+                    "value": round(float(point["portfolio_value"]), 2),
+                }
+            )
+        else:
+            equity_curve.append({"date": "", "value": round(float(point), 2)})
 
     trades_table = backtester.trades_table
     trades: list[dict[str, Any]] = []

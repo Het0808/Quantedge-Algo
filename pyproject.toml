@@ -18,6 +18,7 @@ dependencies = [
     "redis (>=7.4.0,<8.0.0)",
     "pandas (>=3.0.3,<4.0.0)",
     "numpy (>=2.4.6,<3.0.0)",
+    "yfinance (>=0.2.54,<1.0.0)",
     "kiteconnect (>=5.2.0,<6.0.0)",
     "influxdb-client (>=1.50.0,<2.0.0)",
     "scikit-learn (>=1.8.0,<2.0.0)",
